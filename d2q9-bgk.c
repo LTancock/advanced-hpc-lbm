@@ -257,16 +257,14 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
   /* loop over _all_ cells */
   for (int jj = 0; jj < params.ny; jj++)
   {
-    //printf("%d\n", jj);
     for (int ii = 0; ii < params.nx; ii++)
     {
       jj+=2;
-      //printf("%d\n", jj);
       if (jj == params.ny - 1){
         //propagate
         /* determine indices of axis-direction neighbours
         ** respecting periodic boundary conditions (wrap around) */
-        int y_n = (jj + 1) % params.ny;
+        //int y_n = (jj + 1) % params.ny; not used
         int x_e = (ii + 1) % params.nx;
         int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
         int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
@@ -282,11 +280,6 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
         tmp_cells[ii + jj*params.nx].speeds[7] = firstline[x_e].speeds[7]; /* south-west */
         tmp_cells[ii + jj*params.nx].speeds[8] = firstline[x_w].speeds[8]; /* south-east */
-        /*
-        if (firstline[ii].speeds[4] == cells[ii + y_n*params.nx].speeds[4] && jj > 4){
-          printf("equal???\n");
-        }
-        */
       }
       
       else if (jj < params.ny - 1){
@@ -310,42 +303,16 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
         tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
       }
-      //printf("c %f\n", cells[0].speeds[8]);
-      //printf("iteration %d cells %p firstline %p\n", itercount, cells[ii].speeds[0], firstline[ii].speeds[0]);
-      
-      // ONLY FIRSTLINE.SPEEDS[2, 5 or 6] ARE DIFFERENT = SPEEDS UPWARDS
-      /*
-      for (int kk = 0; kk < NSPEEDS; kk++){
-        if ((tmp_cells[ii].speeds[kk] != firstline[ii].speeds[kk])){
-          printf("notequal %d\n", kk);
-        }
-      }
-      */
-      
       
       jj-=2;
-      //printf("%d\n", jj);
 
       //rebound
-
-      /*
-      for (int kk = 0; kk < NSPEEDS; kk++){
-        if (cells[ii].speeds[kk] != firstline[ii].speeds[kk]){
-          printf("notequal1 at direction %d\n", kk);
-        }
-      }
-      */
 
       /* if the cell contains an obstacle */
       if (obstacles[jj*params.nx + ii])
       {
         /* called after propagate, so taking values from scratch space
         ** mirroring, and writing into main grid */
-        /*
-        if (cells[ii + jj*params.nx].speeds[1] != tmp_cells[ii + jj*params.nx].speeds[3]){
-          printf("notequal1.5\n");
-        }
-        */
         cells[ii + jj*params.nx].speeds[1] = tmp_cells[ii + jj*params.nx].speeds[3];
         cells[ii + jj*params.nx].speeds[2] = tmp_cells[ii + jj*params.nx].speeds[4];
         cells[ii + jj*params.nx].speeds[3] = tmp_cells[ii + jj*params.nx].speeds[1];
@@ -355,19 +322,7 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         cells[ii + jj*params.nx].speeds[7] = tmp_cells[ii + jj*params.nx].speeds[5];
         cells[ii + jj*params.nx].speeds[8] = tmp_cells[ii + jj*params.nx].speeds[6];
       }
-      //GETS TOP FOR CELLS, BOTTOM FOR TMP_CELLS SO PROB WORKING FINE
-      /*
-      for (int kk = 0; kk < NSPEEDS; kk++){
-        if (cells[ii].speeds[kk] != firstline[ii].speeds[kk]){
-          printf("notequal at direction %d\n", kk);
-        }
-        if (tmp_cells[ii].speeds[kk] != firstline[ii].speeds[kk]){
-          printf("notequal2 at direction %d\n", kk);
-        }
-      }
-      */
       
-
       //collision
 
       /* don't consider occupied cells */
@@ -446,36 +401,13 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         /* relaxation step */
         for (int kk = 0; kk < NSPEEDS; kk++)
         {
-          //float test = cells[ii + jj*params.nx].speeds[kk];
           cells[ii + jj*params.nx].speeds[kk] = tmp_cells[ii + jj*params.nx].speeds[kk]
                                                   + params.omega
                                                   * (d_equ[kk] - tmp_cells[ii + jj*params.nx].speeds[kk]);
-          /* WORKS
-          if (test != cells[ii + jj*params.nx].speeds[kk]){
-            printf("not same\n");
-          }
-          
-          if (firstline[ii].speeds[kk] != cells[ii].speeds[kk]){
-            printf("not same\n");
-          }
-          */
-          
         }
       }
-      //printf("f %f\n", firstline[0].speeds[0]);
-      //printf("c %f\n", cells[0].speeds[0]);
     }
-    //printf("\n\n\n\n\n\n\n");
-  }/*
-  for(int i = 0; i < params.nx; i++){
-    printf("f %f\n", firstline[i].speeds[1]);
-    printf("c %f\n", cells[i].speeds[1]);
-  }*/
-  //printf("f %f\n", firstline[0].speeds[0]);
-  //printf("c %f\n", cells[0].speeds[0]);
-  //printf("TIMESTEP\n\n\n\n\n\n\n\n");
-  //free(firstline);
-  //firstline = NULL;
+  }
   return EXIT_SUCCESS;
 }
 
@@ -693,17 +625,9 @@ float av_velocity(const t_param params, t_speed* cells, t_speed* firstline, int*
         float u_x = 0.f;
         float u_y = 0.f;
         //if not entered since first row blocked off by an obstacle
+        /*
         if (jj == 0){
           printf("hi\n");
-          for (int kk = 0; kk < NSPEEDS; kk++)
-          {
-            local_density += firstline[ii].speeds[kk];
-            if (firstline[ii].speeds[kk] != cells[ii].speeds[kk]){
-              printf("not same\n");
-            }
-          }
-
-          /* x-component of velocity */
           u_x = (firstline[ii].speeds[1]
                         + firstline[ii].speeds[5]
                         + firstline[ii].speeds[8]
@@ -711,7 +635,6 @@ float av_velocity(const t_param params, t_speed* cells, t_speed* firstline, int*
                            + firstline[ii].speeds[6]
                            + firstline[ii].speeds[7]))
                        / local_density;
-          /* compute y velocity component */
           u_y = (firstline[ii].speeds[2]
                         + firstline[ii].speeds[5]
                         + firstline[ii].speeds[6]
@@ -721,39 +644,29 @@ float av_velocity(const t_param params, t_speed* cells, t_speed* firstline, int*
                        / local_density;
           }
 
-        else{
-          for (int kk = 0; kk < NSPEEDS; kk++)
-          {
-            local_density += cells[ii + jj*params.nx].speeds[kk];
-          }
-          //compare u_x and u_y with default/changed algorithm
-          /* x-component of velocity */
-          u_x = (cells[ii + jj*params.nx].speeds[1]
-                        + cells[ii + jj*params.nx].speeds[5]
-                        + cells[ii + jj*params.nx].speeds[8]
-                        - (cells[ii + jj*params.nx].speeds[3]
-                           + cells[ii + jj*params.nx].speeds[6]
-                           + cells[ii + jj*params.nx].speeds[7]))
-                       / local_density;
-          /* compute y velocity component */
-          u_y = (cells[ii + jj*params.nx].speeds[2]
-                        + cells[ii + jj*params.nx].speeds[5]
-                        + cells[ii + jj*params.nx].speeds[6]
-                        - (cells[ii + jj*params.nx].speeds[4]
-                           + cells[ii + jj*params.nx].speeds[7]
-                           + cells[ii + jj*params.nx].speeds[8]))
-                       / local_density;
-          if ((u_x != 0 || u_y != 0) && itercount == params.maxIters){
-            printf("%d ", jj);
-            /*
-            printf("u_x %f u_y %f jj %d ii %d iter %d\n", u_x, u_y, jj, ii, itercount);
-            for (int kk = 0; kk < NSPEEDS; kk++){
-              printf("dir %d speed %f ", kk, cells[ii + jj*params.nx].speeds[kk]);
-            }
-            printf("\n\n");
-            */
-          }
+        else{*/
+        for (int kk = 0; kk < NSPEEDS; kk++)
+        {
+          local_density += cells[ii + jj*params.nx].speeds[kk];
         }
+        //compare u_x and u_y with default/changed algorithm
+        /* x-component of velocity */
+        u_x = (cells[ii + jj*params.nx].speeds[1]
+                      + cells[ii + jj*params.nx].speeds[5]
+                      + cells[ii + jj*params.nx].speeds[8]
+                      - (cells[ii + jj*params.nx].speeds[3]
+                         + cells[ii + jj*params.nx].speeds[6]
+                         + cells[ii + jj*params.nx].speeds[7]))
+                     / local_density;
+        /* compute y velocity component */
+        u_y = (cells[ii + jj*params.nx].speeds[2]
+                      + cells[ii + jj*params.nx].speeds[5]
+                      + cells[ii + jj*params.nx].speeds[6]
+                      - (cells[ii + jj*params.nx].speeds[4]
+                         + cells[ii + jj*params.nx].speeds[7]
+                         + cells[ii + jj*params.nx].speeds[8]))
+                     / local_density;
+        //}
         
         /* accumulate the norm of x- and y- velocity components */
         tot_u += sqrtf((u_x * u_x) + (u_y * u_y));
