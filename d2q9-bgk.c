@@ -218,54 +218,49 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
 
   //reading top values is wrong because originally they would only have been affected by propagate
   //now they've been affected by rebound and collision as well
-  for (int ii = 0; ii < params.nx; ii++)
+  //propagate on first 2 lines
+  for (int jj = 0; jj < 2; jj++){
+    for (int ii = 0; ii < params.nx; ii++)
     {
-      //propagate
-
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
-      // jj == 0
-      int y_n = (0 + 1) % params.ny;
+      int y_n = (jj + 1) % params.ny;
       int x_e = (ii + 1) % params.nx;
-      int y_s = (0 == 0) ? (0 + params.ny - 1) : (0 - 1);
+      int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
       int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
       /* propagate densities from neighbouring cells, following
       ** appropriate directions of travel and writing into
       ** scratch space grid */
-      tmp_cells[ii].speeds[0] = cells[ii].speeds[0]; /* central cell, no movement */
-      tmp_cells[ii].speeds[1] = cells[x_w].speeds[1]; /* east */
-      tmp_cells[ii].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; /* north */
-      tmp_cells[ii].speeds[3] = cells[x_e].speeds[3]; /* west */
-      tmp_cells[ii].speeds[4] = cells[ii + y_n*params.nx].speeds[4]; /* south */
-      tmp_cells[ii].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; /* north-east */
-      tmp_cells[ii].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
-      tmp_cells[ii].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
-      tmp_cells[ii].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
-
-      firstline[ii].speeds[0] = cells[ii].speeds[0];
-      firstline[ii].speeds[1] = cells[ii].speeds[1];
-      firstline[ii].speeds[2] = cells[ii].speeds[2];
-      firstline[ii].speeds[3] = cells[ii].speeds[3];
-      firstline[ii].speeds[4] = cells[ii].speeds[4];
-      firstline[ii].speeds[5] = cells[ii].speeds[5];
-      firstline[ii].speeds[6] = cells[ii].speeds[6];
-      firstline[ii].speeds[7] = cells[ii].speeds[7];
-      firstline[ii].speeds[8] = cells[ii].speeds[8];
-      /*//WORKS, NO WEIRD REFERENCING ISSUE BUT CELLS SET BACK DOWN TO PREVIOUS VALUE UNTIL NEW TIME
-      printf("f %f c %f i %d\n", firstline[ii].speeds[0], cells[ii].speeds[0], itercount);
-      cells[ii].speeds[0]++;
-      //tmp_cells[ii].speeds[0]++;
-      printf("f %f c %f i %d\n", firstline[ii].speeds[0], cells[ii].speeds[0], itercount);
-      */
-      
+      tmp_cells[ii + jj*params.nx].speeds[0] = cells[ii + jj*params.nx].speeds[0]; /* central cell, no movement */
+      tmp_cells[ii + jj*params.nx].speeds[1] = cells[x_w + jj*params.nx].speeds[1]; /* east */
+      tmp_cells[ii + jj*params.nx].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; /* north */
+      tmp_cells[ii + jj*params.nx].speeds[3] = cells[x_e + jj*params.nx].speeds[3]; /* west */
+      tmp_cells[ii + jj*params.nx].speeds[4] = cells[ii + y_n*params.nx].speeds[4]; /* south */
+      tmp_cells[ii + jj*params.nx].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; /* north-east */
+      tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
+      tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
+      tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
+      if (jj == 0){
+        firstline[ii].speeds[0] = cells[ii].speeds[0];
+        firstline[ii].speeds[1] = cells[ii].speeds[1];
+        firstline[ii].speeds[2] = cells[ii].speeds[2];
+        firstline[ii].speeds[3] = cells[ii].speeds[3];
+        firstline[ii].speeds[4] = cells[ii].speeds[4];
+        firstline[ii].speeds[5] = cells[ii].speeds[5];
+        firstline[ii].speeds[6] = cells[ii].speeds[6];
+        firstline[ii].speeds[7] = cells[ii].speeds[7];
+        firstline[ii].speeds[8] = cells[ii].speeds[8];
+      }
     }
+  }
+  
   /* loop over _all_ cells */
   for (int jj = 0; jj < params.ny; jj++)
   {
     //printf("%d\n", jj);
     for (int ii = 0; ii < params.nx; ii++)
     {
-      jj+=1;
+      jj+=2;
       //printf("%d\n", jj);
       if (jj == params.ny - 1){
         //propagate
@@ -294,7 +289,7 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
         */
       }
       
-      else if (jj != params.ny){
+      else if (jj < params.ny - 1){
         //propagate
         /* determine indices of axis-direction neighbours
         ** respecting periodic boundary conditions (wrap around) */
@@ -328,7 +323,7 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_sp
       */
       
       
-      jj-=1;
+      jj-=2;
       //printf("%d\n", jj);
 
       //rebound
