@@ -241,6 +241,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
       /* propagate densities from neighbouring cells, following
       ** appropriate directions of travel and writing into
       ** scratch space grid */
+     //replace with const floats
       tmp_cells[ii + jj*params.nx].speeds[0] = cells[ii + jj*params.nx].speeds[0]; /* central cell, no movement */
       tmp_cells[ii + jj*params.nx].speeds[1] = cells[x_w + jj*params.nx].speeds[1]; /* east */
       tmp_cells[ii + jj*params.nx].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; /* north */
@@ -265,8 +266,10 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
   }
   
   /* loop over _all_ cells */
+  #pragma omp parallel for
   for (int jj = 0; jj < params.ny; jj++)
   {
+    #pragma omp parallel for
     for (int ii = 0; ii < params.nx; ii++)
     {
       jj+=2;
@@ -274,6 +277,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
         //propagate
         /* determine indices of axis-direction neighbours
         ** respecting periodic boundary conditions (wrap around) */
+        //move these out of this loop
         //int y_n = (jj + 1) % params.ny; not used
         int x_e = (ii + 1) % params.nx;
         int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
