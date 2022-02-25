@@ -270,13 +270,15 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
     for (int ii = 0; ii < params.nx; ii++)
     {
       jj+=2;
+      int y_n = (jj + 1) % params.ny;
+      int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
       if (jj == params.ny - 1){
         //propagate
         /* determine indices of axis-direction neighbours
         ** respecting periodic boundary conditions (wrap around) */
         //int y_n = (jj + 1) % params.ny; not used
         int x_e = (ii + 1) % params.nx;
-        int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
+        //int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
         int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
         /* propagate densities from neighbouring cells, following
         ** appropriate directions of travel and writing into
@@ -296,9 +298,9 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
         //propagate
         /* determine indices of axis-direction neighbours
         ** respecting periodic boundary conditions (wrap around) */
-        int y_n = (jj + 1) % params.ny;
+        
         int x_e = (ii + 1) % params.nx;
-        int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
+        //int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
         int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
         /* propagate densities from neighbouring cells, following
         ** appropriate directions of travel and writing into
@@ -357,7 +359,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
         {
           local_density += tmp_cells[ii + jj*params.nx].speeds[kk];
         }
-
+        float inv_local_density = 1/local_density;
         /* compute x velocity component */
         float u_x = (tmp_cells[ii + jj*params.nx].speeds[1]
                       + tmp_cells[ii + jj*params.nx].speeds[5]
@@ -365,7 +367,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
                       - (tmp_cells[ii + jj*params.nx].speeds[3]
                          + tmp_cells[ii + jj*params.nx].speeds[6]
                          + tmp_cells[ii + jj*params.nx].speeds[7]))
-                     / local_density;
+                     * inv_local_density;
         /* compute y velocity component */
         float u_y = (tmp_cells[ii + jj*params.nx].speeds[2]
                       + tmp_cells[ii + jj*params.nx].speeds[5]
@@ -373,7 +375,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
                       - (tmp_cells[ii + jj*params.nx].speeds[4]
                          + tmp_cells[ii + jj*params.nx].speeds[7]
                          + tmp_cells[ii + jj*params.nx].speeds[8]))
-                     / local_density;
+                     * inv_local_density;
 
         /* velocity squared */
         float u_sq = u_x * u_x + u_y * u_y;
