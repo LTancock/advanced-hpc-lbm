@@ -303,6 +303,8 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
         local_density += speed0 + speed1 + speed2 + speed3 + speed4 + speed5 + 
                           speed6 + speed7 + speed8;
 
+        float inv_local_density = 1/local_density;
+
         /* compute x velocity component */
         float u_x = (speed1
                       + speed5
@@ -310,7 +312,7 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
                       - (speed3
                          + speed6
                          + speed7))
-                     / local_density;
+                     * inv_local_density;
         /* compute y velocity component */
         float u_y = (speed2
                       + speed5
@@ -318,7 +320,7 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
                       - (speed4
                          + speed7
                          + speed8))
-                     / local_density;
+                     * inv_local_density;
 
         /* velocity squared */
         float u_sq = u_x * u_x + u_y * u_y;
