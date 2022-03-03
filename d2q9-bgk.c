@@ -198,11 +198,9 @@ int main(int argc, char* argv[])
 
   return EXIT_SUCCESS;
 }
-int itercount = 0;
 //int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* firstline, int* obstacles)
 int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
 {
-  itercount++;
   accelerate_flow(params, cells, obstacles);
   compute_cells(params, cells, tmp_cells, obstacles);
   /*
