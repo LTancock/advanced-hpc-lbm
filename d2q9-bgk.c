@@ -97,7 +97,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
 //int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* firstline,
                   //int* obstacles);
 int compute_cells(const t_param params, t_speed* restrict cells, t_speed* restrict tmp_cells,
-                  int* obstacles);
+                  int* restrict obstacles);
 int accelerate_flow(const t_param params, t_speed* restrict cells, int* obstacles);
 int propagate(const t_param params, t_speed* restrict cells, t_speed* restrict tmp_cells);
 int rebound(const t_param params, t_speed* restrict cells, t_speed* restrict tmp_cells, int* obstacles);
@@ -231,17 +231,17 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
   #pragma omp parallel for
   for (int jj = 0; jj < params.ny; jj++)
   {
-    int y_n = (jj + 1) % params.ny;
-    int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
+    //int y_n = (jj + 1) % params.ny;
+    //int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
     for (int ii = 0; ii < params.nx; ii++)
     {
       //propagate
       /* determine indices of axis-direction neighbours
       ** respecting periodic boundary conditions (wrap around) */
      //take these out of the loop
-      //int y_n = (jj + 1) % params.ny;
+      int y_n = (jj + 1) % params.ny;
       int x_e = (ii + 1) % params.nx;
-      //int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
+      int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
       int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
       /* propagate densities from neighbouring cells, following
       ** appropriate directions of travel and writing into
