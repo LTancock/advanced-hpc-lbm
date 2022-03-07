@@ -55,6 +55,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/resource.h>
+#include <omp.h>
 
 #define NSPEEDS         9
 #define FINALSTATEFILE  "final_state.dat"
@@ -251,7 +252,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
       tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
       tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
       tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
-      if (jj == 0){
+      /*if (jj == 0){
         firstline[ii].speeds[0] = cells[ii].speeds[0];
         firstline[ii].speeds[1] = cells[ii].speeds[1];
         firstline[ii].speeds[2] = cells[ii].speeds[2];
@@ -261,7 +262,7 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
         firstline[ii].speeds[6] = cells[ii].speeds[6];
         firstline[ii].speeds[7] = cells[ii].speeds[7];
         firstline[ii].speeds[8] = cells[ii].speeds[8];
-      }
+      }*/
     }
   }
   
@@ -269,18 +270,14 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
   float u_x;
   float u_y;
   /* loop over _all_ cells */
-  
-  #pragma omp parallel for shared(tmp_cells) //private(local_density) //private(u_x) private(u_y) //collapse(2) //reduction(+: local_density)
+  int cnt = 0;
+  #pragma omp parallel for firstprivate(cnt) //private(local_density) //private(u_x) private(u_y) //collapse(2) //reduction(+: local_density)
   for (int jj = 0; jj < params.ny; jj++)
   {
-    #pragma omp simd
-    for (int ii = 0; ii < params.nx; ii++)
-    {
-      jj+=2;
-      
-      //get rid of firstcells?
-      //else if (jj < params.ny - 1){
-      if (jj < params.ny){
+    //#pragma omp simd
+    if(!cnt){//working
+      //printf("thread %d timestep %d\n", omp_get_thread_num(), itercount);
+      for (int ii = 0; ii < params.nx; ii++){
         //propagate
         /* determine indices of axis-direction neighbours
         ** respecting periodic boundary conditions (wrap around) */
@@ -300,12 +297,69 @@ int compute_cells(const t_param params, t_speed** cells_ptr, t_speed** tmp_cells
         tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
         tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
         tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
+      }
+      jj+=1;
+      for (int ii = 0; ii < params.nx; ii++){
+        //propagate
+        /* determine indices of axis-direction neighbours
+        ** respecting periodic boundary conditions (wrap around) */
+        int y_n = (jj + 1) % params.ny;
+        int x_e = (ii + 1) % params.nx;
+        int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
+        int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
+        /* propagate densities from neighbouring cells, following
+        ** appropriate directions of travel and writing into
+        ** scratch space grid */
+        tmp_cells[ii + jj*params.nx].speeds[0] = cells[ii + jj*params.nx].speeds[0]; /* central cell, no movement */
+        tmp_cells[ii + jj*params.nx].speeds[1] = cells[x_w + jj*params.nx].speeds[1]; /* east */
+        tmp_cells[ii + jj*params.nx].speeds[2] = cells[ii + y_s*params.nx].speeds[2]; /* north */
+        tmp_cells[ii + jj*params.nx].speeds[3] = cells[x_e + jj*params.nx].speeds[3]; /* west */
+        tmp_cells[ii + jj*params.nx].speeds[4] = cells[ii + y_n*params.nx].speeds[4]; /* south */
+        tmp_cells[ii + jj*params.nx].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; /* north-east */
+        tmp_cells[ii + jj*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
+        tmp_cells[ii + jj*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
+        tmp_cells[ii + jj*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
+      }
+      jj-=1;
+      cnt++;
+    }
+    for (int ii = 0; ii < params.nx; ii++)
+    {
+      
+      //get rid of firstcells?
+      //else if (jj < params.ny - 1){
+      if ((jj + 2) < (omp_get_thread_num() + 1)*(params.ny/omp_get_num_threads())){
+        jj+=2;
+        //propagate
+        /* determine indices of axis-direction neighbours
+        ** respecting periodic boundary conditions (wrap around) */
+        int y_n = (jj + 1) % params.ny;
+        int x_e = (ii + 1) % params.nx;
+        int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
+        int x_w = (ii == 0) ? (ii + params.nx - 1) : (ii - 1);
+        int x_c = ii % params.ny;
+        int y_c = jj % params.nx;
+        /* propagate densities from neighbouring cells, following
+        ** appropriate directions of travel and writing into
+        ** scratch space grid */
+        tmp_cells[x_c + y_c*params.nx].speeds[0] = cells[x_c + y_c*params.nx].speeds[0]; /* central cell, no movement */
+        tmp_cells[x_c + y_c*params.nx].speeds[1] = cells[x_w + y_c*params.nx].speeds[1]; /* east */
+        tmp_cells[x_c + y_c*params.nx].speeds[2] = cells[x_c + y_s*params.nx].speeds[2]; /* north */
+        tmp_cells[x_c + y_c*params.nx].speeds[3] = cells[x_e + y_c*params.nx].speeds[3]; /* west */
+        tmp_cells[x_c + y_c*params.nx].speeds[4] = cells[x_c + y_n*params.nx].speeds[4]; /* south */
+        tmp_cells[x_c + y_c*params.nx].speeds[5] = cells[x_w + y_s*params.nx].speeds[5]; /* north-east */
+        tmp_cells[x_c + y_c*params.nx].speeds[6] = cells[x_e + y_s*params.nx].speeds[6]; /* north-west */
+        tmp_cells[x_c + y_c*params.nx].speeds[7] = cells[x_e + y_n*params.nx].speeds[7]; /* south-west */
+        tmp_cells[x_c + y_c*params.nx].speeds[8] = cells[x_w + y_n*params.nx].speeds[8]; /* south-east */
+        
         //if (cells[x_e + jj*params.nx].speeds[3] != tmp_cells[ii + jj*params.nx].speeds[3]) printf("wat\n");
+        jj-=2;
       }//tmp_cells changes here wtf
       
       int x_e = (ii + 1) % params.nx;
-      if (cells[x_e + jj*params.nx].speeds[3] != tmp_cells[ii + jj*params.nx].speeds[3]) printf("wat %f %f\n", cells[x_e + jj*params.nx].speeds[3], tmp_cells[ii + jj*params.nx].speeds[3]);
-      jj-=2;
+      if (cells[x_e + (jj+2)*params.nx].speeds[3] != tmp_cells[ii + (jj+2)*params.nx].speeds[3]){
+        printf("wat %f %f %d %d\n", cells[x_e + (jj+2)*params.nx].speeds[3], tmp_cells[ii + (jj+2)*params.nx].speeds[3], jj, ii);
+      }
       
       //rebound
 
