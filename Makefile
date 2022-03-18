@@ -2,8 +2,8 @@
 
 EXE=d2q9-bgk
 
-CC=gcc
-CFLAGS= -std=c99 -Ofast -march=native
+CC=mpiicc
+CFLAGS= -std=c99 -Ofast -mtune=broadwell
 LIBS = -lm
 
 FINAL_STATE_FILE=./final_state.dat
