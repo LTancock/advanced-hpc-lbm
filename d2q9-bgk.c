@@ -94,11 +94,11 @@ int initialise(const char* paramfile, const char* obstaclefile,
 ** accelerate_flow(), propagate(), rebound() & collision()
 */
 //int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed*firstline, int* obstacles);
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int rank, int size);
 //int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* firstline,
                   //int* obstacles);
 int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
-                  int* obstacles);
+                  int* obstacles, int rank, int size);
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles);
 int propagate(const t_param params, t_speed* cells, t_speed* tmp_cells);
 int rebound(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles);
@@ -131,10 +131,12 @@ int main(int argc, char* argv[])
 {
   MPI_Init(&argc, &argv);
 
-  int nprocs, rank;
+  int size, rank;
 
   MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  MPI_Comm_size(MPI_COMM_WORLD, &nprocs);
+  MPI_Comm_size(MPI_COMM_WORLD, &size);
+  //printf("rank %d\n", rank);
+  //printf("size %d\n", size);
 
   char*    paramfile = NULL;    /* name of the input parameter file */
   char*    obstaclefile = NULL; /* name of a the input obstacle file */
@@ -161,8 +163,18 @@ int main(int argc, char* argv[])
   gettimeofday(&timstr, NULL);
   tot_tic = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
   init_tic=tot_tic;
-  initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
-
+  //initialise in each rank instead, splitting up initialisation
+  //if (rank == 0){
+    initialise(paramfile, obstaclefile, &params, &cells, &tmp_cells, &obstacles, &av_vels);
+  //}
+  /*int* sendcounts = malloc(sizeof(int) * size);
+  for (int r = 0; r < size; r++){
+    sendcounts[r] = (params.nx*params.ny)/size + ((params.ny % size) > r) ? params.nx:0;
+  }
+  MPI_Scatterv(&cells, sendcounts, starting line?, t_speed, sendcounts[rank]?, t_speed, 0, ??) no. of lines (cells)
+  MPI_Scatterv(&tmp_cells, sendcounts, starting line?, t_speed, sendcounts[rank]?, t_speed, 0, ??) no. of lines (tmp_cells)
+  sendrec obstacles, av_vels
+  */
   /* Init time stops here, compute time starts*/
   gettimeofday(&timstr, NULL);
   init_toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
@@ -170,11 +182,12 @@ int main(int argc, char* argv[])
 
   for (int tt = 0; tt < params.maxIters; tt++)
   {
-    timestep(params, cells, tmp_cells, obstacles);
+    timestep(params, cells, tmp_cells, obstacles, rank, size);
     t_speed* temp = cells;
     cells = tmp_cells;
     tmp_cells = temp;
     av_vels[tt] = av_velocity(params, cells, obstacles);
+
 #ifdef DEBUG
     printf("==timestep: %d==\n", tt);
     printf("av velocity: %.12E\n", av_vels[tt]);
@@ -188,14 +201,15 @@ int main(int argc, char* argv[])
   col_tic=comp_toc;
 
   // Collate data from ranks here 
-
+  //MPI_Gatherv(&cells, sendcounts[rank]?, t_speed, sendcounts, starting line?, t_speed, 0, ??) no. of lines (cells)
+  //MPI_Gatherv(&tmp_cells, sendcounts[rank]?, t_speed, sendcounts, starting line?, t_speed, 0, ??) no. of lines (tmp_cells)
   /* Total/collate time stops here.*/
   gettimeofday(&timstr, NULL);
   col_toc = timstr.tv_sec + (timstr.tv_usec / 1000000.0);
   tot_toc = col_toc;
   
   /* write final values and free memory */
-  printf("Hello from rank %d of %d\n", rank, nprocs);
+  printf("Hello from rank %d of %d\n", rank, size);
   printf("==done==\n");
   printf("Reynolds number:\t\t%.12E\n", calc_reynolds(params, cells, obstacles));
   printf("Elapsed Init time:\t\t\t%.6lf (s)\n",    init_toc - init_tic);
@@ -211,11 +225,11 @@ int main(int argc, char* argv[])
 }
 int itercount = 0;
 //int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* firstline, int* obstacles)
-int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles)
+int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obstacles, int rank, int size)
 {
   itercount++;
   accelerate_flow(params, cells, obstacles);
-  compute_cells(params, cells, tmp_cells, obstacles);
+  compute_cells(params, cells, tmp_cells, obstacles, rank, size);
   /*
   propagate(params, cells, tmp_cells);
   rebound(params, cells, tmp_cells, obstacles);
@@ -227,7 +241,7 @@ int timestep(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obst
 //int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, t_speed* firstline,
                   //int* obstacles)
 int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells, 
-                  int* obstacles)
+                  int* obstacles, int rank, int size)
 {
 
   //t_speed* cells = *cells_ptr;
@@ -240,8 +254,8 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
   const float inv_c_sq = 3.f;
   const float inv_c_sq2 = 4.5f;
 
-  /* loop over _all_ cells */
-  for (int jj = 0; jj < params.ny; jj++)
+  /* loop over _all_ cells *///USE SCATTER?
+  for (int jj = params.ny*rank/size; jj < params.ny*(rank + 1)/size; jj++)
   {
     int y_n = (jj + 1) % params.ny;
     int y_s = (jj == 0) ? (jj + params.ny - 1) : (jj - 1);
@@ -984,7 +998,7 @@ int write_values(const t_param params, t_speed* cells, int* obstacles, float* av
       }
 
       /* write to file */
-      fprintf(fp, "%d %d %.12E %.12E %.12E %.12E %d\n", ii, jj, u_x, u_y, u, pressure, obstacles[ii * params.nx + jj]);
+      fprintf(fp, "%d %d %.12E %.12E %.12E %.12E %d\n", ii, jj, u_x, u_y, u, pressure, obstacles[ii + params.nx * jj]);
     }
   }
 
