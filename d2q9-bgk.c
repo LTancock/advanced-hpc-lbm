@@ -267,11 +267,11 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
 
   /* loop over _all_ cells *///wrong
   //doesn't account for extra row on some atm
-  for (int jj = 0; jj < (params.ny/size); jj++)
+  for (int jj = 0; jj < rows; jj++)
   {
     //printf("jj = %d, rank = %d\n", jj, rank);
-    int y_n = (jj + 1) % (params.ny/size);
-    int y_s = (jj == 0) ? (jj + (params.ny/size) - 1) : (jj - 1);
+    int y_n = (jj + 1) % rows;
+    int y_s = (jj == 0) ? (jj + rows - 1) : (jj - 1);
     for (int ii = 0; ii < params.nx; ii++)
     {
       //propagate
@@ -483,7 +483,7 @@ int compute_cells(const t_param params, t_speed* cells, t_speed* tmp_cells,
   return EXIT_SUCCESS;
 }
 
-//WRONG
+//WRONG maybe
 int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, int rank, int size, int start, int rows)
 {
   /* compute weighting factors */
@@ -491,7 +491,7 @@ int accelerate_flow(const t_param params, t_speed* cells, int* obstacles, int ra
   float w2 = params.density * params.accel / 36.f;
 
   /* modify the 2nd row of the grid */
-  int jj = (params.ny/size) - 2;
+  int jj = rows - 2;
 
   for (int ii = 0; ii < params.nx; ii++)
   {
@@ -677,8 +677,10 @@ int collision(const t_param params, t_speed* cells, t_speed* tmp_cells, int* obs
   return EXIT_SUCCESS;
 }
 
-float av_velocity(const t_param params, t_speed* cells, int* obstacles, int rank, int size)
+float av_velocity(const t_param params, t_speed* cells, int* obstacles, int rank, int size, int start, int rows)
 {
+  //ISSUE communication probably needs to happen, calculate tot_u then divide by tot_cells afterwards?
+  //tot_cells = no. of non-blocked cells
   int    tot_cells = 0;  /* no. of cells used in calculation */
   float tot_u;          /* accumulated magnitudes of velocity for each cell */
 
@@ -686,7 +688,7 @@ float av_velocity(const t_param params, t_speed* cells, int* obstacles, int rank
   tot_u = 0.f;
 
   /* loop over all non-blocked cells */
-  for (int jj = 0; jj < (params.ny/size); jj++)
+  for (int jj = 0; jj < rows; jj++)
   {
     for (int ii = 0; ii < params.nx; ii++)
     {
@@ -951,7 +953,7 @@ float calc_reynolds(const t_param params, t_speed* cells, int* obstacles)
 {
   const float viscosity = 1.f / 6.f * (2.f / params.omega - 1.f);
 
-  return av_velocity(params, cells, obstacles, 0, 1) * params.reynolds_dim / viscosity;
+  return av_velocity(params, cells, obstacles, 0, 1, 0, params.ny) * params.reynolds_dim / viscosity;
 }
 
 float total_density(const t_param params, t_speed* cells)
